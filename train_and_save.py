@@ -1,9 +1,15 @@
 import numpy as np
 import tensorflow as tf
+from neuraxle.steps.data import EpochRepeater
+
+from neuraxle.metaopt.random import ValidationSplitWrapper
+from neuraxle.steps.flow import TrainOnlyWrapper
+
 from neuraxle.api import DeepLearningPipeline
 from neuraxle.base import ExecutionContext, DEFAULT_CACHE_FOLDER
 from neuraxle.hyperparams.space import HyperparameterSamples
-from neuraxle.pipeline import Pipeline
+from neuraxle.pipeline import Pipeline, MiniBatchSequentialPipeline
+from neuraxle.steps.misc import DataShuffler
 from neuraxle.steps.numpy import OneHotEncoder
 from neuraxle.steps.output_handlers import OutputTransformerWrapper
 
@@ -135,16 +141,42 @@ def accuracy_score_classification(data_inputs, expected_outputs):
 
 
 def main():
-    pipeline = DeepLearningPipeline(
-        HumanActivityRecognitionPipeline(),
-        validation_size=0.15,
-        batch_size=HumanActivityRecognitionPipeline.BATCH_SIZE,
-        batch_metrics={'accuracy': accuracy_score_classification},
-        shuffle_in_each_epoch_at_train=True,
-        n_epochs=HumanActivityRecognitionPipeline.EPOCHS,
-        epochs_metrics={'accuracy': accuracy_score_classification},
-        scoring_function=accuracy_score_classification
-    )
+    pipeline = Pipeline([EpochRepeater(
+        ValidationSplitWrapper(
+            MetricsWrapper(
+                Pipeline([
+                    TrainOnlyWrapper(DataShuffler()),
+                    MiniBatchSequentialPipeline([
+                        MetricsWrapper(
+                            Pipeline([
+                                OutputTransformerWrapper(OneHotEncoder(nb_columns=6, name='one_hot_encoded_label')),
+                                FormatData(n_classes=6),
+                                TensorflowV1ModelStep(
+                                    create_graph=create_graph,
+                                    create_loss=create_loss,
+                                    create_optimizer=create_optimizer
+                                ).set_hyperparams(
+                                    HyperparameterSamples({
+                                        'n_steps': 128,
+                                        'n_inputs': 9,
+                                        'n_hidden': 32,
+                                        'n_classes': 6,
+                                        'learning_rate': 0.0015,
+                                        'lambda_loss_amount': 0.0015,
+                                        'batch_size': 1500
+                                    }))
+                            ]),
+                            metrics={'accuracy': accuracy_score_classification},
+                            name='batch_metrics' )],
+                        batch_size=1500)
+                ]),
+                metrics={'accuracy': accuracy_score_classification},
+                name='epoch_metrics',
+                print_metrics=True
+            ),
+            test_size=0.15,
+            scoring_function=accuracy_score_classification
+        ), epochs=100)])
 
     data_inputs, expected_outputs = load_data()
     pipeline, outputs = pipeline.fit_transform(data_inputs, expected_outputs)
