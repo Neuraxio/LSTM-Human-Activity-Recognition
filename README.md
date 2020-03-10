@@ -36,8 +36,7 @@ That said, I will use the almost raw data: only the gravity effect has been filt
 
 As explained in [this article](http://karpathy.github.io/2015/05/21/rnn-effectiveness/), an RNN takes many input vectors to process them and output other vectors. It can be roughly pictured like in the image below, imagining each rectangle has a vectorial depth and other special hidden quirks in the image below. **In our case, the "many to one" architecture is used**: we accept time series of [feature vectors](https://www.quora.com/What-do-samples-features-time-steps-mean-in-LSTM/answer/Guillaume-Chevalier-2) (one vector per [time step](https://www.quora.com/What-do-samples-features-time-steps-mean-in-LSTM/answer/Guillaume-Chevalier-2)) to convert them to a probability vector at the output for classification. Note that a "one to one" architecture would be a standard feedforward neural network.
 
-> <a href="http://karpathy.github.io/2015/05/21/rnn-effectiveness/" ><img src="http://karpathy.github.io/assets/rnn/diags.jpeg" /></a>
-> http://karpathy.github.io/2015/05/21/rnn-effectiveness/
+> ![RNN Architectures](https://raw.githubusercontent.com/Neuraxio/Machine-Learning-Figures/master/rnn-architectures.png)
 
 ## What is an LSTM?
 
@@ -648,6 +647,15 @@ Copyright (c) 2016 Guillaume Chevalier. To cite my code, you can point to the UR
 > https://github.com/guillaume-chevalier/LSTM-Human-Activity-Recognition
 
 My code is available for free and even for private usage for anyone under the [MIT License](https://github.com/guillaume-chevalier/LSTM-Human-Activity-Recognition/blob/master/LICENSE), however I ask to cite for using the code.
+
+Here is the BibTeX citation code: 
+```
+@misc{chevalier2016lstms,
+  title={LSTMs for human activity recognition},
+  author={Chevalier, Guillaume},
+  year={2016}
+}
+```
 
 ## Extra links
 
