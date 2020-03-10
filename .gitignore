@@ -1,2 +1,9 @@
 .ipynb_checkpoints
 ___*
+.idea/**
+__pycache__/**
+cache/**
+savers/__pycache__/**
+steps/__pycache__/**
+venv/**
+
