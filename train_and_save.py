@@ -1,9 +1,13 @@
 import numpy as np
 import tensorflow as tf
-from neuraxle.api import DeepLearningPipeline
 from neuraxle.base import ExecutionContext, DEFAULT_CACHE_FOLDER
 from neuraxle.hyperparams.space import HyperparameterSamples
-from neuraxle.pipeline import Pipeline
+from neuraxle.metaopt.auto_ml import Trainer, ValidationSplitter
+from neuraxle.metaopt.callbacks import ScoringCallback
+from neuraxle.metaopt.trial import Trial
+from neuraxle.pipeline import MiniBatchSequentialPipeline
+from neuraxle.steps.data import DataShuffler
+from neuraxle.steps.flow import TrainOnlyWrapper
 from neuraxle.steps.numpy import OneHotEncoder
 from neuraxle.steps.output_handlers import OutputTransformerWrapper
 
@@ -97,7 +101,7 @@ def create_loss(step: TensorflowV1ModelStep):
     ) + l2
 
 
-class HumanActivityRecognitionPipeline(Pipeline):
+class HumanActivityRecognitionPipeline(MiniBatchSequentialPipeline):
     N_HIDDEN = 32
     N_STEPS = 128
     N_INPUTS = 9
@@ -109,6 +113,7 @@ class HumanActivityRecognitionPipeline(Pipeline):
 
     def __init__(self):
         super().__init__([
+            TrainOnlyWrapper(DataShuffler()),
             OutputTransformerWrapper(OneHotEncoder(nb_columns=self.N_CLASSES, name='one_hot_encoded_label')),
             FormatData(n_classes=self.N_CLASSES),
             TensorflowV1ModelStep(
@@ -126,7 +131,7 @@ class HumanActivityRecognitionPipeline(Pipeline):
                     'batch_size': self.BATCH_SIZE
                 })
             )
-        ])
+        ], batch_size=self.BATCH_SIZE)
 
 
 def accuracy_score_classification(data_inputs, expected_outputs):
@@ -135,27 +140,38 @@ def accuracy_score_classification(data_inputs, expected_outputs):
 
 
 def main():
-    pipeline = DeepLearningPipeline(
-        HumanActivityRecognitionPipeline(),
-        validation_size=0.15,
-        batch_size=HumanActivityRecognitionPipeline.BATCH_SIZE,
-        batch_metrics={'accuracy': accuracy_score_classification},
-        shuffle_in_each_epoch_at_train=True,
-        n_epochs=HumanActivityRecognitionPipeline.EPOCHS,
-        epochs_metrics={'accuracy': accuracy_score_classification},
-        scoring_function=accuracy_score_classification
+    trainer = Trainer(
+        epochs=HumanActivityRecognitionPipeline.EPOCHS,
+        validation_splitter=ValidationSplitter(test_size=0.15),
+        scoring_callback=ScoringCallback(metric_function=accuracy_score_classification, higher_score_is_better=True)
     )
 
+    pipeline: MiniBatchSequentialPipeline = HumanActivityRecognitionPipeline()
     data_inputs, expected_outputs = load_data()
-    pipeline, outputs = pipeline.fit_transform(data_inputs, expected_outputs)
+    trial: Trial = trainer.train(
+        pipeline=pipeline,
+        data_inputs=data_inputs,
+        expected_outputs=expected_outputs
+    )
 
-    accuracies_train = pipeline.get_epoch_metric_train('accuracy')
-    accuracies_validation = pipeline.get_epoch_metric_validation('accuracy')
+    train_values = trial.validation_splits[0].metrics_results['main']['train_values']
+    validation_values = trial.validation_splits[0].metrics_results['main']['validation_values']
 
-    plot_metric(accuracies_train, accuracies_validation, xlabel='epoch', ylabel='accuracy', title='Model Accuracy')
+    plot_metric(
+        train_values=train_values,
+        validation_values=validation_values,
+        xlabel='epoch',
+        ylabel='accuracy',
+        title='Model Accuracy'
+    )
 
     loss = pipeline.get_step_by_name('TensorflowV1ModelStep').loss
-    plot_metric(loss, xlabel='batch', ylabel='softmax_cross_entropy_with_logits', title='softmax_cross_entropy_with_logits')
+    plot_metric(
+        train_values=loss,
+        xlabel='batch',
+        ylabel='softmax_cross_entropy_with_logits',
+        title='softmax_cross_entropy_with_logits'
+    )
 
     pipeline.save(ExecutionContext(DEFAULT_CACHE_FOLDER))
     pipeline.teardown()

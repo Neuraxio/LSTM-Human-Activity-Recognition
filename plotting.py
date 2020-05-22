@@ -1,12 +1,12 @@
 from matplotlib import pyplot as plt
 
 
-def plot_metric(metric_train, metric_validation=None, xlabel='x', ylabel='y', title='Metric'):
-    plt.plot(range(len(metric_train)), metric_train)
+def plot_metric(train_values, validation_values=None, xlabel='x', ylabel='y', title='Metric'):
+    plt.plot(range(len(train_values)), train_values)
 
     legend = ['training']
-    if metric_validation is not None:
-        plt.plot(range(len(metric_validation)), metric_validation)
+    if validation_values is not None:
+        plt.plot(range(len(validation_values)), validation_values)
         legend.append('validation')
 
     plt.xlabel(xlabel)
