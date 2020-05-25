@@ -1,4 +1,4 @@
-from neuraxle.api.flask import JSONDataResponseEncoder
+from neuraxle.rest.flask import JSONDataResponseEncoder
 
 
 class CustomJSONEncoderOfOutputs(JSONDataResponseEncoder):

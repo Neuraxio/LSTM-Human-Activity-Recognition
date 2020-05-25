@@ -6,6 +6,7 @@ from neuraxle.metaopt.auto_ml import Trainer, ValidationSplitter
 from neuraxle.metaopt.callbacks import ScoringCallback
 from neuraxle.metaopt.trial import Trial
 from neuraxle.pipeline import MiniBatchSequentialPipeline
+from neuraxle.rest.flask import FlaskRestApiWrapper
 from neuraxle.steps.data import DataShuffler
 from neuraxle.steps.flow import TrainOnlyWrapper
 from neuraxle.steps.numpy import OneHotEncoder
@@ -29,7 +30,7 @@ def create_graph(step: TensorflowV1ModelStep):
     # Graph input/output
     data_inputs = tf.placeholder(tf.float32, [None, step.hyperparams['n_steps'], step.hyperparams['n_inputs']],
                                  name='data_inputs')
-    expected_outputs = tf.placeholder(tf.float32, [None, step.hyperparams['n_classes']], name='expected_outputs')
+    tf.placeholder(tf.float32, [None, step.hyperparams['n_classes']], name='expected_outputs')
 
     # Graph weights
     weights = {
@@ -101,7 +102,15 @@ def create_loss(step: TensorflowV1ModelStep):
     ) + l2
 
 
+def create_inputs(step: TensorflowV1ModelStep, data_inputs, expected_outputs=None):
+    if expected_outputs is None:
+        # For inference, a default value has to be placed inside the expected outputs placeholder
+        return {step['expected_outputs']: np.zeros([data_inputs.shape[0], step.hyperparams['n_classes']])}
+    return {}
+
+
 class HumanActivityRecognitionPipeline(MiniBatchSequentialPipeline):
+    NAME = 'HumanActivityRecognitionPipeline'
     N_HIDDEN = 32
     N_STEPS = 128
     N_INPUTS = 9
@@ -119,7 +128,8 @@ class HumanActivityRecognitionPipeline(MiniBatchSequentialPipeline):
             TensorflowV1ModelStep(
                 create_graph=create_graph,
                 create_loss=create_loss,
-                create_optimizer=create_optimizer
+                create_optimizer=create_optimizer,
+                create_feed_dict=create_inputs
             ).set_hyperparams(
                 HyperparameterSamples({
                     'n_steps': self.N_STEPS,  # 128 timesteps per series
@@ -132,6 +142,7 @@ class HumanActivityRecognitionPipeline(MiniBatchSequentialPipeline):
                 })
             )
         ], batch_size=self.BATCH_SIZE)
+        self.set_name(self.NAME)
 
 
 def accuracy_score_classification(data_inputs, expected_outputs):
@@ -165,16 +176,21 @@ def main():
         title='Model Accuracy'
     )
 
-    loss = pipeline.get_step_by_name('TensorflowV1ModelStep').loss
+    # Get trained pipeline
+    trained_pipeline = trial.get_trained_pipeline(split_number=0)
+
+    train_losses = trained_pipeline.get_step_by_name('TensorflowV1ModelStep').train_losses
+    validation_losses = trained_pipeline.get_step_by_name('TensorflowV1ModelStep').test_losses
     plot_metric(
-        train_values=loss,
+        train_values=train_losses,
+        validation_values=validation_losses,
         xlabel='batch',
         ylabel='softmax_cross_entropy_with_logits',
         title='softmax_cross_entropy_with_logits'
     )
 
-    pipeline.save(ExecutionContext(DEFAULT_CACHE_FOLDER))
-    pipeline.teardown()
+    # Save trained pipeline
+    trained_pipeline.save(ExecutionContext(DEFAULT_CACHE_FOLDER), full_dump=True)
 
 
 if __name__ == '__main__':

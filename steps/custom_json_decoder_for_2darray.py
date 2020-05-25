@@ -1,6 +1,5 @@
 import numpy as np
-
-from neuraxle.api.flask import JSONDataBodyDecoder
+from neuraxle.rest.flask import JSONDataBodyDecoder
 
 
 class CustomJSONDecoderFor2DArray(JSONDataBodyDecoder):
