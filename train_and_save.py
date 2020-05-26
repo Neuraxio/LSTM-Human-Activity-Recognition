@@ -6,14 +6,13 @@ from neuraxle.metaopt.auto_ml import Trainer, ValidationSplitter
 from neuraxle.metaopt.callbacks import ScoringCallback
 from neuraxle.metaopt.trial import Trial
 from neuraxle.pipeline import MiniBatchSequentialPipeline
-from neuraxle.rest.flask import FlaskRestApiWrapper
 from neuraxle.steps.data import DataShuffler
 from neuraxle.steps.flow import TrainOnlyWrapper
 from neuraxle.steps.numpy import OneHotEncoder
 from neuraxle.steps.output_handlers import OutputTransformerWrapper
+from neuraxle_tensorflow.tensorflow_v1 import TensorflowV1ModelStep
 
 from data_reading import load_data
-from neuraxle_tensorflow.tensorflow_v1 import TensorflowV1ModelStep
 from plotting import plot_metric
 from steps.forma_data import FormatData
 

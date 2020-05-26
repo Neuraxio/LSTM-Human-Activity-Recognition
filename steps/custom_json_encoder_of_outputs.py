@@ -1,4 +1,5 @@
 from neuraxle.rest.flask import JSONDataResponseEncoder
+import numpy as np
 
 
 class CustomJSONEncoderOfOutputs(JSONDataResponseEncoder):
@@ -12,5 +13,5 @@ class CustomJSONEncoderOfOutputs(JSONDataResponseEncoder):
         :return:
         """
         return {
-            'predictions': list(data_inputs)
+            'predictions': list(np.array(data_inputs).tolist())
         }
